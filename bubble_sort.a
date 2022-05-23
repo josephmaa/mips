@@ -1,0 +1,83 @@
+.data
+numbers:      .word 20, 30, 10, 40, 50, 60, 30, 25, 10, 5
+lastUnsorted: .word 9
+iterator:     .word 0
+
+.text
+.globl main
+
+main:
+# Bubble sorts numbers array.
+
+lw $t1, lastUnsorted
+li $t2, 0 # Initialize sortedFlag to 0.
+
+start_while_loop:
+
+slti $t3, $t1, 1 # Check if lastUnsorted is less than 1.
+or $t3, $t2, $t3 # Check if lastUnsorted is less than 1 or sortedFlag is 1.
+bne, $t3, $zero, end_while_loop # Check condition for while loop.
+
+li $t2, 1 # Set sortedFlag to 1.
+li $t4, 0 # Set the iterator for the for loop.
+
+start_for_loop:
+
+beq $t4, $t1, end_for_loop
+
+# Swap the current number and next number in the array if the current number is smaller than the next number in the array.
+
+# Get the value of the current value in the array.
+la $t5, numbers
+li $t6, 4 # Calculate the offset of the address of the current value.
+mul $t7, $t6, $t4
+add $t5, $t5, $t7
+lw $t6, ($t5) # Store it in register 6 since we'll use the address to find the next value in the array.
+
+# Get the value of the next value in the array. The next value should be offset by a word in the array.
+addi $t7, $t5, 4 # Store the address of the next value in t7
+lw $t8, ($t7)
+
+# Check whether if statement is valid
+ble $t6, $t8, end_if
+sw $t8, ($t5)
+sw $t6, ($t7)
+li $t2, 0 # Set sortedFlag equal to 0.
+
+end_if:
+addi $t4, $t4, 1 # Increment the iterator for the for loop.
+j start_for_loop
+
+end_for_loop:
+addi $t1, $t1, -1 # Decrement lastUnsorted by 1
+addi $t4, $t4, 1 # Increment the for loop iterator by 1.
+j start_while_loop
+
+end_while_loop:
+
+# Print out the array of numbers for debugging.
+
+la $t0, numbers
+li $t1, 0
+li $t2, 9
+li $t3, 4
+
+start_print:
+
+bgt $t1, $t2, end_print
+mul $t4, $t1, $t3
+add $t5, $t0, $t4
+lw $a0, ($t5)
+li $v0, 1
+syscall
+# print space, 32 is ASCII code for space
+li $a0, 32
+li $v0, 11  # syscall number for printing character
+syscall
+addi $t1, $t1, 1
+j start_print
+
+end_print:
+
+li          $v0, 10                        # system code for exit
+syscall
