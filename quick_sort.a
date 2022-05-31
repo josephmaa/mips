@@ -8,63 +8,11 @@ length:  .word 11
 
 main:
 
-# Print out the array of numbers for debugging.
-
-la $t0, numbers
-li $t1, 0
-li $t2, 11
-li $t3, 4
-
-start_print_debug:
-
-bgt $t1, $t2, end_print_debug
-mul $t4, $t1, $t3
-add $t5, $t0, $t4
-lw $a0, ($t5)
-li $v0, 1
-syscall
-# print space, 32 is ASCII code for space
-li $a0, 32
-li $v0, 11  # syscall number for printing character
-syscall
-addi $t1, $t1, 1
-j start_print_debug
-
-end_print_debug:
-
-li $v0 11  # syscall 11: print a character based on its ASCII value
-li $a0 10  # ASCII value of a newline is "10"
-syscall
-
 la $a0, numbers
 li $a1, 0
 lw $a2, length
 addi $a2, $a2, -1
 jal quickSort
-
-# Print out the array of numbers for debugging.
-
-la $t0, numbers
-li $t1, 0
-li $t2, 11
-li $t3, 4
-
-start_print:
-
-bgt $t1, $t2, end_print
-mul $t4, $t1, $t3
-add $t5, $t0, $t4
-lw $a0, ($t5)
-li $v0, 1
-syscall
-# print space, 32 is ASCII code for space
-li $a0, 32
-li $v0, 11  # syscall number for printing character
-syscall
-addi $t1, $t1, 1
-j start_print
-
-end_print:
 
 li $v0, 10
 syscall
