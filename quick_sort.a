@@ -1,0 +1,293 @@
+.data
+
+numbers: .word 8 2 7 10 5 6 3 4 9 3 1
+length:  .word 11
+
+.text
+.globl main
+
+main:
+
+# Print out the array of numbers for debugging.
+
+la $t0, numbers
+li $t1, 0
+li $t2, 11
+li $t3, 4
+
+start_print_debug:
+
+bgt $t1, $t2, end_print_debug
+mul $t4, $t1, $t3
+add $t5, $t0, $t4
+lw $a0, ($t5)
+li $v0, 1
+syscall
+# print space, 32 is ASCII code for space
+li $a0, 32
+li $v0, 11  # syscall number for printing character
+syscall
+addi $t1, $t1, 1
+j start_print_debug
+
+end_print_debug:
+
+li $v0 11  # syscall 11: print a character based on its ASCII value
+li $a0 10  # ASCII value of a newline is "10"
+syscall
+
+la $a0, numbers
+li $a1, 0
+lw $a2, length
+addi $a2, $a2, -1
+jal quickSort
+
+# Print out the array of numbers for debugging.
+
+la $t0, numbers
+li $t1, 0
+li $t2, 11
+li $t3, 4
+
+start_print:
+
+bgt $t1, $t2, end_print
+mul $t4, $t1, $t3
+add $t5, $t0, $t4
+lw $a0, ($t5)
+li $v0, 1
+syscall
+# print space, 32 is ASCII code for space
+li $a0, 32
+li $v0, 11  # syscall number for printing character
+syscall
+addi $t1, $t1, 1
+j start_print
+
+end_print:
+
+li $v0, 10
+syscall
+
+quickSort:
+# Use quick sort on numbers array.
+#
+# Input:
+# a0: Start address of array with n integers
+# a1: Integer low
+# a2: Integer high
+#
+# Intermediate values:
+#
+# s0-s2: Argument parameters
+# s3: pivotPosition
+#
+# Output:
+# Sorts array in-place.
+
+# We have to store 5 values on the stack (including the return address).
+addi $sp, $sp, -20
+sw $ra, 4($sp)
+sw $s0, 8($sp)
+sw $s1, 12($sp)
+sw $s2, 16($sp)
+sw $s3, 20($sp)
+
+move $s0, $a0
+move $s1, $a1
+move $s2, $a2
+
+if:
+bge $a1, $a2, end_if
+
+move $a0, $s0
+move $a1, $s1
+move $a2, $s2
+jal partition # pivotPosition is placed into register $v0
+
+move $a0, $s0
+move $a1, $s1
+move $s3, $v0 
+addi $v0, $v0, -1
+move $a2, $v0
+jal quickSort
+
+move $a0, $s0
+move $a1, $s3
+addi $a1, $a1, 1
+move $a2, $s2
+jal quickSort
+
+end_if:
+
+# Restore values back (including the return address).
+lw $ra, 4($sp)
+lw $s0, 8($sp)
+lw $s1, 12($sp)
+lw $s2, 16($sp)
+lw $s3, 20($sp)
+addi $sp, $sp, 20
+
+jr $ra
+
+swap:
+# Swap should exchange the memory value at the two addresses passed it. Swap does not call any subprograms.
+#
+# Input:
+# a0: address of integer operand 1.
+# a1: address of integer operand 2.
+#
+# Intermediate values:
+#
+# t0: temp address value of integer operand 1
+# t1: value of integer operand 1
+# t2: value of integer operand 2
+#
+# Output:
+# Swaps the memory values in-place.
+
+move $t0, $a0
+lw $t1, ($a0)
+lw $t2, ($a1)
+
+sw $t2, ($a0)
+sw $t1, ($a1)
+
+jr $ra
+
+partition:
+# Partition should split the array based on the pivot value arbitrarily selected as the low element in the array. 
+#
+# Input:
+# a0: start address of array with n integers.
+# a1: integer low.
+# a2: integer high.
+#
+# Intermediate values:
+# s0-2: saved parameter values
+# s3: right value before swap is called
+# s4: pivot value before swap is called
+# t0: left index
+# t1: right index
+# t2: current pivot value
+# t3: current right value
+# t4: intermediate if condition value
+# t5: current left value
+# t6: intermediate if condition value
+# t7: right value address
+# t8: pivot address
+#
+# Output:
+# v0: an integer value corresponding to the index of the pivot.
+
+# We have to store 6 values on the stack.
+addi $sp, $sp, -24 # setup call-frame
+sw $ra, 4($sp) # save the return addr to get back to main
+sw $s0, 8($sp) # save main's s-registers if it is
+sw $s1, 12($sp) # using any
+sw $s2, 16($sp)
+sw $s3, 20($sp)
+sw $s4, 24($sp)
+
+# Save the parameter values in the save registers.
+move $s0, $a0
+move $s1, $a1
+move $s2, $a2
+
+# Save left in $t0.
+move $t0, $s1
+
+# Save right in $t1.
+move $t1, $s2
+
+# Save current pivot value in $t2.
+mul $t2, $s1, 4
+add $t2, $t2, $s0
+lw $t2, ($t2)
+
+while_left_lt_right:
+bge $t0, $t1, end_while_left_lt_right
+
+while_array_right_gt_pivot:
+# Calculate the right value.
+move $t3, $t1
+mul $t3, $t3, 4
+add $t3, $t3, $a0
+lw $t3, ($t3)
+ble $t3, $t2, end_while_array_right_gt_pivot
+addi $t1, $t1, -1
+j while_array_right_gt_pivot
+
+end_while_array_right_gt_pivot:
+
+while_left_lt_right_and_left_element_lte_pivot:
+# Check left is less than right element.
+sge $t4, $t0, $t1
+
+# Calculate the left value
+move $t5, $t0
+mul $t5, $t5, 4
+add $t5, $t5, $a0
+lw $t5, ($t5)
+
+# Check left element is less than equal to pivot.
+sgt $t6, $t5, $t2
+
+# Combine the logic for breaking out of the second while loop. If left >= right or array[left] > pivot, their respective conditions will set their registers to a non-zero value. Or-ing the respective bytes and comparing it to zero will yield a non-zero value to break if either is true.
+or $t6, $t6, $t4
+sne $t6, $t6, $zero
+bne $t6, $zero, end_while_left_lt_right_and_left_element_lte_pivot
+addi $t0, $t0, 1
+
+end_while_left_lt_right_and_left_element_lte_pivot:
+
+if_left_lt_right:
+bge $t0, $t1, end_if_left_lt_right
+
+# Calculate array[left]
+move $t5, $t0
+mul $t5, $t5, 4
+add $t5, $t5, $s0
+move $a0, $t5
+
+# Calculate array[right]
+move $t3, $t1 
+mul $t3, $t3, 4
+add $t3, $t3, $s0
+move $a1, $t3
+# After returning from the swap function, we can make no assumptions about any information stored in the temp registers. Therefore, store the variables we need (right index, pivot value) into save registers as well.
+move $s3, $t1
+move $s4, $t2
+jal swap
+
+end_if_left_lt_right:
+
+end_while_left_lt_right:
+
+# Calculate array[right]
+move $t1, $s3
+mul $t7, $t1, 4
+add $t7, $t7, $s0
+lw $t3, ($t7)
+
+# Calculate the address of array[low]
+move $t8, $s1
+mul $t8, $t8, 4
+add $t8, $t8, $s0
+
+sw $t3, ($t8)
+sw $s4, ($t7) 
+
+move $v0, $s3
+
+addi $sp, $sp, 24 # setup call-frame
+lw $ra, 4($sp) 
+lw $s0, 8($sp) 
+lw $s1, 12($sp)
+lw $s2, 16($sp)
+lw $s3, 20($sp)
+lw $s4, 24($sp)
+
+jr $ra
+
+
