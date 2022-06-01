@@ -8,7 +8,7 @@ length:  .word 11
 
 main:
 
-la $a0, numbers
+la $a0, numbers # Start main
 li $a1, 0
 lw $a2, length
 addi $a2, $a2, -1
@@ -34,12 +34,12 @@ quickSort:
 # Sorts array in-place.
 
 # We have to store 5 values on the stack (including the return address).
-addi $sp, $sp, -20
-sw $ra, 4($sp)
-sw $s0, 8($sp)
-sw $s1, 12($sp)
-sw $s2, 16($sp)
-sw $s3, 20($sp)
+addi $sp, $sp, -20 # Start quickSort
+sw $ra, ($sp)
+sw $s0, 4($sp)
+sw $s1, 8($sp)
+sw $s2, 12($sp)
+sw $s3, 16($sp)
 
 move $s0, $a0
 move $s1, $a1
@@ -47,6 +47,21 @@ move $s2, $a2
 
 if:
 bge $a1, $a2, end_if
+
+# Start debug
+li $v0, 1
+move $a0, $a1
+syscall
+li $v0 11  # syscall 11: print a character based on its ASCII value
+li $a0 10  # ASCII value of a newline is "10"
+syscall
+li $v0, 1
+move $a0, $a2
+syscall
+li $v0 11  # syscall 11: print a character based on its ASCII value
+li $a0 10  # ASCII value of a newline is "10"
+syscall
+# End debug
 
 move $a0, $s0
 move $a1, $s1
@@ -69,11 +84,11 @@ jal quickSort
 end_if:
 
 # Restore values back (including the return address).
-lw $ra, 4($sp)
-lw $s0, 8($sp)
-lw $s1, 12($sp)
-lw $s2, 16($sp)
-lw $s3, 20($sp)
+lw $ra, ($sp)
+lw $s0, 4($sp)
+lw $s1, 8($sp)
+lw $s2, 12($sp)
+lw $s3, 16($sp)
 addi $sp, $sp, 20
 
 jr $ra
@@ -94,7 +109,7 @@ swap:
 # Output:
 # Swaps the memory values in-place.
 
-move $t0, $a0
+move $t0, $a0 # Start swap
 lw $t1, ($a0)
 lw $t2, ($a1)
 
@@ -129,13 +144,13 @@ partition:
 # v0: an integer value corresponding to the index of the pivot.
 
 # We have to store 6 values on the stack.
-addi $sp, $sp, -24 # setup call-frame
-sw $ra, 4($sp) # save the return addr to get back to main
-sw $s0, 8($sp) # save main's s-registers if it is
-sw $s1, 12($sp) # using any
-sw $s2, 16($sp)
-sw $s3, 20($sp)
-sw $s4, 24($sp)
+addi $sp, $sp, -24 # setup call-frame # Start partition
+sw $ra, ($sp) # save the return addr to get back to main
+sw $s0, 4($sp) # save main's s-registers if it is
+sw $s1, 8($sp) # using any
+sw $s2, 12($sp)
+sw $s3, 16($sp)
+sw $s4, 20($sp)
 
 # Save the parameter values in the save registers.
 move $s0, $a0
@@ -182,10 +197,11 @@ lw $t5, ($t5)
 sgt $t6, $t5, $t2
 
 # Combine the logic for breaking out of the second while loop. If left >= right or array[left] > pivot, their respective conditions will set their registers to a non-zero value. Or-ing the respective bytes and comparing it to zero will yield a non-zero value to break if either is true.
+
 or $t6, $t6, $t4
-sne $t6, $t6, $zero
 bne $t6, $zero, end_while_left_lt_right_and_left_element_lte_pivot
 addi $t0, $t0, 1
+j while_left_lt_right_and_left_element_lte_pivot
 
 end_while_left_lt_right_and_left_element_lte_pivot:
 
@@ -210,6 +226,8 @@ jal swap
 
 end_if_left_lt_right:
 
+j while_left_lt_right
+
 end_while_left_lt_right:
 
 # Calculate array[right]
@@ -228,13 +246,13 @@ sw $s4, ($t7)
 
 move $v0, $s3
 
+lw $ra, ($sp) 
+lw $s0, 4($sp) 
+lw $s1, 8($sp)
+lw $s2, 12($sp)
+lw $s3, 16($sp)
+lw $s4, 20($sp)
 addi $sp, $sp, 24 # setup call-frame
-lw $ra, 4($sp) 
-lw $s0, 8($sp) 
-lw $s1, 12($sp)
-lw $s2, 16($sp)
-lw $s3, 20($sp)
-lw $s4, 24($sp)
 
 jr $ra
 
