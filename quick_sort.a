@@ -113,100 +113,99 @@ partition:
 #
 # Intermediate values:
 # s0-2: saved parameter values
-# s3: right value before swap is called
-# s4: pivot value before swap is called
-# t0: left index
-# t1: right index
-# t2: current pivot value
-# t3: current right value
-# t4: intermediate if condition value
-# t5: current left value
-# t6: intermediate if condition value
-# t7: right value address
-# t8: pivot address
+# s3: left index
+# s4: right index
+# s5: left value
+# s6: right value
+# s7: pivot value
+# t0: intermediate if condition value
+# t1: intermediate if condition value
+# t2: intermediate left address
+# t3: intermediate right address
+# t4: intermediate array[low] address
 #
 # Output:
 # v0: an integer value corresponding to the index of the pivot.
 
-# We have to store 6 values on the stack.
-addi $sp, $sp, -24 # setup call-frame # Start partition
+# We have to store 8 values on the stack.
+addi $sp, $sp, -36 # setup call-frame # Start partition
 sw $ra, ($sp) # save the return addr to get back to main
 sw $s0, 4($sp) # save main's s-registers if it is
 sw $s1, 8($sp) # using any
 sw $s2, 12($sp)
 sw $s3, 16($sp)
 sw $s4, 20($sp)
+sw $s5, 24($sp)
+sw $s6, 28($sp)
+sw $s7, 32($sp)
 
 # Save the parameter values in the save registers.
 move $s0, $a0
 move $s1, $a1
 move $s2, $a2
 
-# Save left in $t0.
-move $t0, $s1
+# Save left in $s5.
+move $s3, $s1
 
-# Save right in $t1.
-move $t1, $s2
+# Save right in $s6.
+move $s4, $s2
 
-# Save current pivot value in $t2.
-mul $t2, $s1, 4
-add $t2, $t2, $s0
-lw $t2, ($t2)
+# Save current pivot value in $s7.
+mul $s7, $s1, 4
+add $s7, $s7, $s0
+lw $s7, ($s7)
 
 while_left_lt_right:
-bge $t0, $t1, end_while_left_lt_right
+bge $s3, $s4, end_while_left_lt_right
 
 while_array_right_gt_pivot:
 # Calculate the right value.
-move $t3, $t1
-mul $t3, $t3, 4
-add $t3, $t3, $s0
-lw $t3, ($t3)
-ble $t3, $t2, end_while_array_right_gt_pivot
-addi $t1, $t1, -1
+move $s6, $s4
+mul $s6, $s6, 4
+add $s6, $s6, $s0
+lw $s6, ($s6)
+ble $s6, $s7, end_while_array_right_gt_pivot
+addi $s4, $s4, -1
 j while_array_right_gt_pivot
 
 end_while_array_right_gt_pivot:
 
 while_left_lt_right_and_left_element_lte_pivot:
-# Check left is less than right element.
-sge $t4, $t0, $t1
+# Check left is less than right index.
+sge $t0, $s3, $s4
 
 # Calculate the left value
-move $t5, $t0
-mul $t5, $t5, 4
-add $t5, $t5, $s0
-lw $t5, ($t5)
+move $s5, $s3
+mul $s5, $s5, 4
+add $s5, $s5, $s0
+lw $s5, ($s5)
 
 # Check left element is less than equal to pivot.
-sgt $t6, $t5, $t2
+sgt $t1, $s5, $s7
 
 # Combine the logic for breaking out of the second while loop. If left >= right or array[left] > pivot, their respective conditions will set their registers to a non-zero value. Or-ing the respective bytes and comparing it to zero will yield a non-zero value to break if either is true.
 
-or $t6, $t6, $t4
-bne $t6, $zero, end_while_left_lt_right_and_left_element_lte_pivot
-addi $t0, $t0, 1
+or $t1, $t0, $t1
+bne $t1, $zero, end_while_left_lt_right_and_left_element_lte_pivot
+addi $s3, $s3, 1
 j while_left_lt_right_and_left_element_lte_pivot
 
 end_while_left_lt_right_and_left_element_lte_pivot:
 
 if_left_lt_right:
-bge $t0, $t1, end_if_left_lt_right
+bge $s3, $s4, end_if_left_lt_right
 
-# Calculate array[left]
-move $t5, $t0
-mul $t5, $t5, 4
-add $t5, $t5, $s0
-move $a0, $t5
+# Calculate array[left] address.
+move $t2, $s3
+mul $t2, $t2, 4
+add $t2, $t2, $s0
+move $a0, $t2
 
-# Calculate array[right]
-move $t3, $t1 
+# Calculate array[right] address.
+move $t3, $s4 
 mul $t3, $t3, 4
 add $t3, $t3, $s0
 move $a1, $t3
-# After returning from the swap function, we can make no assumptions about any information stored in the temp registers. Therefore, store the variables we need (right index, pivot value) into save registers as well.
-move $s3, $t1
-move $s4, $t2
 jal swap
 
 end_if_left_lt_right:
@@ -216,20 +215,20 @@ j while_left_lt_right
 end_while_left_lt_right:
 
 # Calculate array[right]
-move $t1, $s3
-mul $t7, $t1, 4
-add $t7, $t7, $s0
-lw $t3, ($t7)
+move $t3, $s4
+mul $t3, $t3, 4
+add $t3, $t3, $s0
+lw $s6, ($t3)
 
 # Calculate the address of array[low]
-move $t8, $s1
-mul $t8, $t8, 4
-add $t8, $t8, $s0
+move $t4, $s1
+mul $t4, $t4, 4
+add $t4, $t4, $s0
 
-sw $t3, ($t8)
-sw $s4, ($t7) 
+sw $s6, ($t4)
+sw $s7, ($t3) 
 
-move $v0, $s3
+move $v0, $s4   
 
 lw $ra, ($sp) 
 lw $s0, 4($sp) 
@@ -237,7 +236,10 @@ lw $s1, 8($sp)
 lw $s2, 12($sp)
 lw $s3, 16($sp)
 lw $s4, 20($sp)
-addi $sp, $sp, 24 # setup call-frame
+lw $s5, 24($sp)
+lw $s6, 28($sp)
+lw $s7, 32($sp)
+addi $sp, $sp, 36 # setup call-frame
 
 jr $ra
 
