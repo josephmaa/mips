@@ -1,7 +1,14 @@
 .data
 
+newline: .asciiz "\n"
 prompt: .asciiz "Please input a bit string value: "
 printed: .asciiz "The values in the bit strings are: "
+unioned: .asciiz "The unioned bit strings are: "
+intersectioned: .asciiz "The intersectioned bit strings are: "
+differenced: .asciiz "The differenced bit strings (ordered by input) are: "
+
+bitStringOneAscii: .space 32
+bitStringTwoAscii: .space 32
 bitStringOne: .space 32
 bitStringTwo: .space 32
 
@@ -15,34 +22,70 @@ la $a0, prompt
 li $v0, 4
 syscall
 
-la $a0, bitStringOne
+la $a0, bitStringOneAscii
+
 li $a1, 32
 li $v0, 8
 syscall
 
-la $a0, bitStringOne
+la $a0, bitStringOneAscii
 jal bitString
 
-move $s0, $v0
+la $t0, bitStringOne
+sw $v0, ($t0)
 
 la $a0, prompt
 li $v0, 4
 syscall
 
-la $a0, bitStringTwo
+la $a0, bitStringTwoAscii
 li $a1, 32
 li $v0, 8
 syscall
 
-la $a0, bitStringTwo
+la $a0, bitStringTwoAscii
 jal bitString
 
-move $s1, $v0
+la $t0, bitStringTwo
+sw $v0, ($t0)
 
-move $a0, $s0
+lw $a0, bitStringOne
 jal print
 
-move $a0, $s1
+lw $a0, bitStringTwo
+jal print
+
+la $a0, unioned
+li $v0, 4
+syscall
+
+la $a0, bitStringOne
+la $a1, bitStringTwo
+jal union
+
+move $a0, $v0
+jal print
+
+la $a0, intersectioned
+li $v0, 4
+syscall
+
+la $a0, bitStringOne
+la $a1, bitStringTwo
+jal intersection
+
+move $a0, $v0
+jal print
+
+la $a0, differenced
+li $v0, 4
+syscall
+
+la $a0, bitStringOne
+la $a1, bitStringTwo
+jal difference
+
+move $a0, $v0
 jal print
 
 li $v0, 10
@@ -67,7 +110,7 @@ bitString:
 # v0: word containing set of letters as a bitString
 
 # Save 1 value on the stack.
-addi $sp, $sp, -8 # setup call-frame # Start partition
+addi $sp, $sp, -8 # setup call-frame
 sw $ra, ($sp) # save the return addr to get back to main
 sw $s0, 4($sp) # save main's s-registers if it is
 
@@ -138,7 +181,10 @@ union:
 lw $t0, ($a0)
 lw $t1, ($a1)
 and $t2, $t0, $t1
-move $v0 $t2
+move $v0, $t2
+
+jr $ra
+
 
 intersection:
 # Parameters:
@@ -151,20 +197,67 @@ intersection:
 lw $t0, ($a0)
 lw $t1, ($a1)
 or $t2, $t0, $t1
-move $v0 $t2
+move $v0, $t2
+
+jr $ra
+
 
 difference:
 # Parameters:
 # a0: pointer to the first bitString
 # a1: pointer to the second bitString
 #
+# Intermediate values:
+# t0: value of first bitString
+# t1: value of second bitString
+# t2: intermediate return value of function
+# t3: counter through loop for both bitStrings
+# t4: mask for current value
+# t5: boolean for first bitString value
+# t6: boolean for second bitString value
+# t7: range counter value for end
+#
 # Return value:
 # v0: a new bitString representing the set difference of the first set minus the second set
 
 lw $t0, ($a0)
 lw $t1, ($a1)
-sub $t2, $t0, $t1
-move $v0 $t2
+li $t2, 0
+li $t3, 0
+li $t7, 26
+
+for_loop_diff:
+beq $t3, $t7, end_for_loop_diff
+
+# Generate the mask
+li $t4, 1
+sllv $t4, $t4, $t3
+
+# Calculate the boolean for the first bitString value.
+and $t5, $t0, $t4
+
+# Calculate the boolean for the second bitString value.
+add $t6, $a1, $t3
+lbu $t6, ($t6)
+and $t6, $t1, $t4
+
+# Calculate the and condition where the element is in the first bitString, but not the second bitString to be added to final result.
+if_difference:
+beq $t5, 0, end_if_difference
+bne $t6, 0 end_if_difference
+or $t2, $t2, $t4
+
+end_if_difference:
+
+# Increment the counter
+addi $t3, $t3, 1
+j for_loop_diff
+
+end_for_loop_diff:
+
+move $v0, $t2
+
+jr $ra
 
 contains:
 # Parameters:
@@ -192,7 +285,7 @@ print:
 # None
 
 # Save 1 value on the stack.
-addi $sp, $sp, -8 # setup call-frame # Start partition
+addi $sp, $sp, -8 # setup call-frame
 sw $ra, ($sp) # save the return addr to get back to main
 sw $s0, 4($sp) # save main's s-registers if it is
 
@@ -259,6 +352,11 @@ end_for:
 # Print close bracket.
 li $v0, 11
 li $a0, '}'
+syscall
+
+# Print a newline.
+li $v0 11  # syscall 11: print a character based on its ASCII value
+lw $a0 newline  # ASCII value of a newline is "10"
 syscall
 
 # Move values back into their registers.
