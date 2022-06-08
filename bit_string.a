@@ -21,6 +21,9 @@ syscall
 la $a0, bitStringOne
 jal bitString
 
+move $a0, $v0
+jal print
+
 li $v0, 10
 syscall
 
@@ -35,6 +38,9 @@ bitString:
 # s0: pointer to current character evaluated
 # t0: 32 bit boolean array corresponding to the bitString
 # t1: current character evaluated
+# t2: number of left shifts
+# t3: boolean checking for alphabetic character
+# t4: temporary mask
 #
 # Return values:
 # v0: word containing set of letters as a bitString
@@ -133,12 +139,95 @@ contains:
 # v0: a boolean that describes whether a value is in the bitString (0 for false, 1 for true)
 
 print:
+# Prints a bitString as an ordered, uppercase, bracketed set. (e.g. {E, G, T, Y})
 # Parameters:
-# a0: pointer to a bitString
+# a0: bitString value
 #
 # Temporary registers:
+# s0: bitString value
+# t0: counter of current index
+# t1: loop range comparison value
+# t2: mask for comparing values
+# t3: flag to print a comma
+# t4: ascii value to print
 #
-#
-# Need to loop through the 26 elements of the bitString
+# Return value:
+# None
+
+# Save 1 value on the stack.
+addi $sp, $sp, -8 # setup call-frame # Start partition
+sw $ra, ($sp) # save the return addr to get back to main
+sw $s0, 4($sp) # save main's s-registers if it is
+
+move $s0, $a0
+
+# Print open bracket.
+li $v0, 11
+li $a0, '{'
+syscall
+
+# The loop should iterate 26 times.
+li $t0, 0
+li $t1, 26
+
+# Set comma flag to 0
+li $t3, 0
+
+# Need to loop through the 26 elements of the bitString.
+for_loop:
+
+# Check if the current value is outside the index
+beq $t0, $t1, end_for
+
+# If the comma flag is set, print a comma, then set the flag back to 0
+if_comma:
+bne $t3, 1, end_if_comma
+li $v0, 11
+li $a0, ','
+syscall
+
+# Set comma flag to 0.
+li $t3, 0
+
+end_if_comma:
+
+# Check if the current value should be printed and set the comma flag for the next iteration.
+
+li $t2, 1
+sllv $t2, $t2, $t0
+and $t2, $t2, $s0
+sne $t3, $t2, 0
+
+if_char:
+beq $t3, $0, end_if_char
+addi $t4, $t0, 65
+
+# Print the current value.
+li $v0, 11
+move $a0, $t4
+syscall
+
+# Set the comma flag if there is a char.
+li $t3, 1
+
+end_if_char:
+
+# Increment the loop counter
+addi $t0, $t0, 1
+j for_loop
+
+end_for:
+
+# Print close bracket.
+li $v0, 11
+li $a0, '}'
+syscall
+
+# Move values back into their registers.
+lw $ra, ($sp) 
+lw $s0, 4($sp) 
+addi $sp, $sp, 8
+
+jr $ra
 
 
