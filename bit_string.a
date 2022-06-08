@@ -1,0 +1,144 @@
+.data
+
+prompt: .asciiz "Please input a bit string value: "
+bitStringOne: .space 32
+bitStringTwo: .space 32
+
+.text
+.globl main
+
+main:
+
+la $a0, prompt
+li $v0, 4
+syscall
+
+la $a0, bitStringOne
+li $a1, 32
+li $v0, 8
+syscall
+
+la $a0, bitStringOne
+jal bitString
+
+li $v0, 10
+syscall
+
+end_main:
+
+################################################################################
+bitString:
+# Parameters:
+# a0: pointer to the .asciiz string
+#
+# Intermediate values:
+# s0: pointer to current character evaluated
+# t0: 32 bit boolean array corresponding to the bitString
+# t1: current character evaluated
+#
+# Return values:
+# v0: word containing set of letters as a bitString
+
+# Save 1 value on the stack.
+addi $sp, $sp, -8 # setup call-frame # Start partition
+sw $ra, ($sp) # save the return addr to get back to main
+sw $s0, 4($sp) # save main's s-registers if it is
+
+# Generate word by looping through .asciiz string.
+
+la $s0, ($a0)
+
+loop:
+
+lbu $t1, ($s0)
+
+# Check for the null terminated character to end loop.
+li $t2, 10
+beq $t1, $t2, end_loop
+
+# Use a trick involving setting the bit corresponding to 32 with an or to force the value into a lowercase letter to standardize values, then check if the indexed value is within the range for characters. https://stackoverflow.com/questions/40000211/testing-if-a-value-is-within-one-of-two-ranges
+# Set lower-case bit.
+ori $t2, $t1, 0x20
+
+# Subtract the index within the alphabet.
+addiu $t2, $t2, -97
+
+# create a boolean checking idx <= 'z' - 'a'.
+sltiu $t3, $t2, 26
+
+beq $t3, $0, continue
+
+# Create the mask 
+li $t4, 1
+
+# Calculate the number of shifts left.
+sllv $t4, $t4, $t2
+
+# OR the mask against the actual bit string result.
+or $t0, $t0, $t4
+
+# Increment address in loop.
+addi $s0, $s0, 1
+
+j loop
+
+continue:
+
+# Increment address in loop.
+addi $s0, $s0, 1
+
+j loop
+
+end_loop:
+
+move $v0, $t0
+
+# Move values back into their registers.
+lw $ra, ($sp) 
+lw $s0, 4($sp) 
+addi $sp, $sp, 8
+
+jr $ra
+
+union:
+# Parameters:
+# a0: pointer to the first bitString
+# a1: pointer to the second bitString
+#
+# Return value:
+# v0: a new bitString representing the set union of the two bitStrings
+
+intersection:
+# Parameters:
+# a0: pointer to the first bitString
+# a1: pointer to the second bitString
+#
+# Return value:
+# v0: a new bitString representing the set intersection of the two bitStrings
+
+difference:
+# Parameters:
+# a0: pointer to the first bitString
+# a1: pointer to the second bitString
+#
+# Return value:
+# v0: a new bitString representing the set difference of the first set minus the second set
+
+contains:
+# Parameters:
+# a0: .ascii character 
+# a1: pointer to a bitString
+#
+# Return value:
+# v0: a boolean that describes whether a value is in the bitString (0 for false, 1 for true)
+
+print:
+# Parameters:
+# a0: pointer to a bitString
+#
+# Temporary registers:
+#
+#
+# Need to loop through the 26 elements of the bitString
+
+
