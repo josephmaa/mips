@@ -1,6 +1,7 @@
 .data
 
 prompt: .asciiz "Please input a bit string value: "
+printed: .asciiz "The values in the bit strings are: "
 bitStringOne: .space 32
 bitStringTwo: .space 32
 
@@ -8,6 +9,7 @@ bitStringTwo: .space 32
 .globl main
 
 main:
+# Asks for two bitStrings and stores them in s0 and s1 respectively. Then prints the two.
 
 la $a0, prompt
 li $v0, 4
@@ -21,7 +23,26 @@ syscall
 la $a0, bitStringOne
 jal bitString
 
-move $a0, $v0
+move $s0, $v0
+
+la $a0, prompt
+li $v0, 4
+syscall
+
+la $a0, bitStringTwo
+li $a1, 32
+li $v0, 8
+syscall
+
+la $a0, bitStringTwo
+jal bitString
+
+move $s1, $v0
+
+move $a0, $s0
+jal print
+
+move $a0, $s1
 jal print
 
 li $v0, 10
@@ -51,7 +72,7 @@ sw $ra, ($sp) # save the return addr to get back to main
 sw $s0, 4($sp) # save main's s-registers if it is
 
 # Generate word by looping through .asciiz string.
-
+li $t0, 0
 la $s0, ($a0)
 
 loop:
@@ -114,6 +135,11 @@ union:
 # Return value:
 # v0: a new bitString representing the set union of the two bitStrings
 
+lw $t0, ($a0)
+lw $t1, ($a1)
+and $t2, $t0, $t1
+move $v0 $t2
+
 intersection:
 # Parameters:
 # a0: pointer to the first bitString
@@ -122,6 +148,11 @@ intersection:
 # Return value:
 # v0: a new bitString representing the set intersection of the two bitStrings
 
+lw $t0, ($a0)
+lw $t1, ($a1)
+or $t2, $t0, $t1
+move $v0 $t2
+
 difference:
 # Parameters:
 # a0: pointer to the first bitString
@@ -129,6 +160,11 @@ difference:
 #
 # Return value:
 # v0: a new bitString representing the set difference of the first set minus the second set
+
+lw $t0, ($a0)
+lw $t1, ($a1)
+sub $t2, $t0, $t1
+move $v0 $t2
 
 contains:
 # Parameters:
@@ -150,6 +186,7 @@ print:
 # t2: mask for comparing values
 # t3: flag to print a comma
 # t4: ascii value to print
+# t5: bool if current char should be printed
 #
 # Return value:
 # None
@@ -179,6 +216,16 @@ for_loop:
 # Check if the current value is outside the index
 beq $t0, $t1, end_for
 
+# Check if the current value should be printed and set the comma flag for the next iteration.
+
+li $t2, 1
+sllv $t2, $t2, $t0
+and $t2, $t2, $s0
+sne $t5, $t2, 0
+
+if_char:
+beq $t5, $0, end_if_char
+
 # If the comma flag is set, print a comma, then set the flag back to 0
 if_comma:
 bne $t3, 1, end_if_comma
@@ -191,15 +238,6 @@ li $t3, 0
 
 end_if_comma:
 
-# Check if the current value should be printed and set the comma flag for the next iteration.
-
-li $t2, 1
-sllv $t2, $t2, $t0
-and $t2, $t2, $s0
-sne $t3, $t2, 0
-
-if_char:
-beq $t3, $0, end_if_char
 addi $t4, $t0, 65
 
 # Print the current value.
